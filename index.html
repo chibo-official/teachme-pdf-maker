@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teach me Biz 取込用PDFメーカー</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PDFメーカー">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{--red:#C8102E;--gray:#6D6E71;--line:#e3e3e3;--bg:#f4f4f4}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Meiryo UI","Meiryo","Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg);color:#222}
+.app{display:grid;grid-template-columns:440px 1fr;height:100vh}
+.editor{background:#fff;border-right:1px solid var(--line);overflow-y:auto;padding:0 0 80px}
+.editor header{background:var(--red);color:#fff;padding:14px 18px;position:sticky;top:0;z-index:5}
+.editor header h1{margin:0;font-size:16px}
+.editor header p{margin:3px 0 0;font-size:11px;opacity:.9}
+.sec{padding:14px 18px;border-bottom:1px solid var(--line)}
+label{display:block;font-size:12px;color:var(--gray);margin:8px 0 3px}
+input[type=text],textarea,select{width:100%;padding:7px 9px;border:1px solid #ccc;border-radius:5px;font:inherit;font-size:13px}
+textarea{resize:vertical;min-height:64px}
+button{font:inherit;font-size:12px;border:1px solid #bbb;background:#fff;border-radius:5px;padding:6px 10px;cursor:pointer}
+button:hover{background:#f0f0f0}
+button.primary{background:var(--red);border-color:var(--red);color:#fff;font-weight:bold;font-size:14px;padding:10px 14px}
+button.primary:hover{background:#a90d26}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.step{border:1px solid var(--line);border-radius:8px;margin:10px 0;padding:10px;background:#fafafa}
+.step .top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.num{background:var(--red);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+.step .top input{flex:1}
+.drop{border:2px dashed #ccc;border-radius:6px;padding:8px;text-align:center;font-size:12px;color:var(--gray);cursor:pointer;margin-top:6px;background:#fff}
+.drop.over{border-color:var(--red);background:#fff4f6}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.thumb{position:relative;width:74px;height:74px;border:1px solid #ccc;border-radius:4px;background:#fff;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .x{position:absolute;top:1px;right:1px;padding:0 5px;line-height:18px;font-size:12px;background:rgba(0,0,0,.65);color:#fff;border:0;border-radius:3px}
+.thumb .mv{position:absolute;bottom:1px;left:1px;padding:0 4px;line-height:16px;font-size:11px;background:rgba(255,255,255,.85);border:0;border-radius:3px}
+.hint{font-size:11px;color:var(--gray);line-height:1.5}
+.stat{font-size:11px;color:var(--gray);margin-top:6px}
+.preview{overflow:auto;padding:20px}
+.preview .zoomwrap{zoom:.62}
+/* ===== A4 page ===== */
+.page{width:210mm;height:297mm;background:#fff;margin:0 auto 18px;position:relative;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.2);page-break-after:always;break-after:page}
+.page .stepno{position:absolute;left:14mm;top:13mm;display:flex;align-items:center;gap:4mm;font-size:16pt;font-weight:bold;max-width:182mm}
+.page .stepno .n{background:#2b3a67;color:#fff;border-radius:50%;min-width:9mm;height:9mm;display:flex;align-items:center;justify-content:center;font-size:12pt}
+.page .photo{position:absolute;left:14mm;right:14mm;top:30mm;height:150mm;background:#e8e8e8;display:flex;align-items:center;justify-content:center}
+.page .photo{display:grid;gap:3mm;background:transparent;grid-auto-rows:minmax(0,1fr);align-items:stretch;justify-content:stretch}
+.page .photo .cell{background:#e8e8e8;position:relative;min-width:0;min-height:0;overflow:hidden}
+.page .photo .cell img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.page .photo.n1{grid-template-columns:1fr}
+.page .photo.n2{grid-template-columns:1fr 1fr}
+.page .photo.n3{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1.2fr) minmax(0,1fr)}
+.page .photo.n3 .cell:first-child{grid-column:1/3}
+.page .photo.n4{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) minmax(0,1fr)}
+.page .photo.empty{background:#e8e8e8;display:flex;align-items:center;justify-content:center}
+.page .photo.empty{color:#aaa;font-size:11pt}
+.page .body{position:absolute;left:14mm;right:14mm;top:188mm;bottom:22mm;font-size:13pt;line-height:1.7;white-space:pre-wrap;overflow:hidden}
+.page .foot{position:absolute;left:14mm;right:14mm;bottom:8mm;display:flex;justify-content:space-between;font-size:7.5pt;color:#555;border-top:1px solid #ddd;padding-top:2mm}
+.cover .steps{position:absolute;right:14mm;top:13mm;font-size:12pt;color:var(--gray)}
+.cover .title{position:absolute;left:14mm;right:14mm;top:95mm;font-size:25pt;font-weight:bold;line-height:1.4;border-left:3mm solid var(--red);padding-left:6mm}
+.cover .sub{position:absolute;left:23mm;right:14mm;top:150mm;font-size:16pt;color:var(--gray)}
+@page{size:A4;margin:0}
+@media print{
+  html,body{background:#fff}
+  .app{display:block;height:auto}
+  .editor{display:none}
+  .preview{padding:0;overflow:visible}
+  .preview .zoomwrap{zoom:1}
+  .page{margin:0;box-shadow:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.editor{max-height:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="editor">
+  <header>
+    <h1>Teach me Biz 取込用PDFメーカー</h1>
+    <p>1ページ＝1ステップ（Teach me Bizの出力PDFと同じ形）</p>
+  </header>
+
+  <div class="sec">
+    <label>タイトル</label>
+    <input type="text" id="title" placeholder="例）帆立とズワイガニの贅沢海鮮ココット">
+    <label>サブタイトル（任意）</label>
+    <input type="text" id="subtitle" placeholder="例）ぷれじでんと12月1月おすすめ">
+    <label>作成者</label>
+    <input type="text" id="author" placeholder="例）koyama">
+    <label style="display:flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="unify" checked> 社内用語を自動で統一する（客数→お客様数 など）</label>
+  </div>
+
+  <div class="sec">
+    <div class="row">
+      <button class="primary" id="btnPrint">PDFを作る（印刷→PDFとして保存）</button>
+    </div>
+    <p class="hint">開いた印刷画面で「送信先：PDFに保存」、「余白：なし」、「背景のグラフィック：オン」を選んでください。作成したPDFは Teach me Biz の「作成 → PDFからマニュアル作成」で取り込みます。</p>
+    <div class="stat" id="stat"></div>
+  </div>
+
+  <div class="sec">
+    <div class="row">
+      <button id="btnAdd">＋ ステップ追加</button>
+      <button id="btnShoot">📷 撮影して新しいステップ</button>
+      <button id="btnBulk">写真をまとめて追加</button>
+      <button id="btnSample">サンプルを入れる</button>
+      <button id="btnClear">全部消す</button>
+    </div>
+    <input type="file" id="bulkFile" accept="image/*" multiple hidden>
+    <p class="hint">「写真をまとめて追加」は、1枚につき1ステップを作ります（ファイル名順）。1ステップに複数枚入れるときは、各ステップの写真欄で複数選択、または「カメラで撮影して追加」を使ってください（最大4枚）。スマホ・タブレットではカメラが直接起動します（パソコンではファイル選択になります）。写真は自動で縮小されます。</p>
+    <div id="steps"></div>
+  </div>
+</div>
+
+<div class="preview"><div class="zoomwrap" id="pages"></div></div>
+</div>
+<datalist id="names">
+  <option value="オーダー用意"><option value="仕込み"><option value="カウンター焼"><option value="鉄板焼"><option value="盛り付け"><option value="仕上げ"><option value="提供"><option value="完成"><option value="注意点">
+</datalist>
+
+<script>
+const MAX_EDGE = 1600, QUALITY = 0.85;
+let state = { title:'', subtitle:'', author:'', unify:true, steps:[] };
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+try{ const d = localStorage.getItem('tmb-pdf-maker'); if(d) state = Object.assign(state, JSON.parse(d)); }catch(e){}
+let saveTimer;
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ try{ localStorage.setItem('tmb-pdf-maker', JSON.stringify(state)); }catch(e){} },400); }
+
+const TERMS = [[/客数/g,'お客様数'],[/客単価/g,'お客様単価'],[/客席/g,'お客様席'],[/プレジデント/g,'ぷれじでんと']];
+function U(s){ s = s||''; if(!state.unify) return s; TERMS.forEach(([a,b])=>{ s = s.replace(a,b); }); return s; }
+
+function resizeImage(file){
+  return new Promise((res,rej)=>{
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = ()=>{
+      let {width:w,height:h} = img; const k = Math.min(1, MAX_EDGE/Math.max(w,h));
+      w = Math.round(w*k); h = Math.round(h*k);
+      const c = document.createElement('canvas'); c.width=w; c.height=h;
+      const x = c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,w,h); x.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg',QUALITY));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('読み込めない画像です')); };
+    img.src = url;
+  });
+}
+
+const MAX_IMGS = 4;
+function newStep(o={}){ return Object.assign({name:'',text:'',imgs:[]},o); }
+state.steps.forEach(s=>{ if(!s.imgs){ s.imgs = s.img?[s.img]:[]; delete s.img; } });
+
+function renderEditor(){
+  $('#title').value = state.title; $('#subtitle').value = state.subtitle;
+  $('#author').value = state.author; $('#unify').checked = state.unify;
+  const box = $('#steps'); box.innerHTML='';
+  state.steps.forEach((s,i)=>{
+    const d = document.createElement('div'); d.className='step';
+    d.innerHTML = `
+      <div class="top"><span class="num">${i+1}</span>
+        <input type="text" list="names" placeholder="工程名（例：カウンター焼）" value="${esc(s.name)}" data-k="name">
+        <button data-a="up" title="上へ">↑</button><button data-a="down" title="下へ">↓</button>
+        <button data-a="dup" title="複製">複製</button><button data-a="del" title="削除">削除</button></div>
+      <div class="thumbs">${s.imgs.map((u,j)=>`<div class="thumb"><img src="${u}"><button class="x" data-ia="rm" data-j="${j}" title="外す">×</button>${j>0?`<button class="mv" data-ia="left" data-j="${j}" title="前へ">◀</button>`:''}</div>`).join('')}</div>
+      <div class="drop" data-a="pick">${s.imgs.length>=MAX_IMGS?`写真は最大${MAX_IMGS}枚です`:`📷 写真をドロップ／クリックで追加（複数選択可・残り${MAX_IMGS-s.imgs.length}枚）`}</div>
+      <div class="row" style="margin-top:6px"><button data-a="cam" ${s.imgs.length>=MAX_IMGS?'disabled':''}>📷 カメラで撮影して追加</button></div>
+      <textarea placeholder="説明文・分量など（改行はそのまま反映されます）" data-k="text">${esc(s.text)}</textarea>`;
+    d.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('input',()=>{ s[el.dataset.k]=el.value; renderPreview(); save(); }));
+    d.querySelectorAll('button[data-a]').forEach(b=>b.addEventListener('click',()=>act(i,b.dataset.a)));
+    const drop = d.querySelector('.drop');
+    drop.addEventListener('click',()=>pickImage(i));
+    d.querySelectorAll('[data-ia]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); const j=+b.dataset.j, a=s.imgs;
+      if(b.dataset.ia==='rm') a.splice(j,1); else if(j>0) [a[j-1],a[j]]=[a[j],a[j-1]];
+      renderEditor(); renderPreview(); save(); }));
+    drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+    drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+    drop.addEventListener('drop',async e=>{ e.preventDefault(); drop.classList.remove('over'); await addImages(i,[...e.dataTransfer.files]); });
+    box.appendChild(d);
+  });
+}
+
+function shoot(cb){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); inp.onchange=()=>{ if(inp.files.length) cb([...inp.files]); }; inp.click(); }
+function pickImage(i){ const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true; inp.onchange=()=>addImages(i,[...inp.files]); inp.click(); }
+async function addImages(i,files){
+  files = files.filter(f=>f.type.startsWith('image/')).sort((a,b)=>a.name.localeCompare(b.name,'ja',{numeric:true}));
+  const a = state.steps[i].imgs, room = MAX_IMGS-a.length;
+  if(files.length>room) alert(`1ステップの写真は最大${MAX_IMGS}枚です。先頭の${room}枚だけ追加します。`);
+  for(const f of files.slice(0,Math.max(room,0))){ try{ a.push(await resizeImage(f)); }catch(e){ alert(e.message); } }
+  renderEditor(); renderPreview(); save();
+}
+
+function act(i,a){
+  const st = state.steps;
+  if(a==='up' && i>0) [st[i-1],st[i]]=[st[i],st[i-1]];
+  else if(a==='down' && i<st.length-1) [st[i+1],st[i]]=[st[i],st[i+1]];
+  else if(a==='dup') st.splice(i+1,0,newStep({...st[i],imgs:[...st[i].imgs]}));
+  else if(a==='del'){ if(!confirm(`ステップ${i+1}を削除しますか？`)) return; st.splice(i,1); }
+  else if(a==='pick') return;
+  else if(a==='cam'){ shoot(files=>addImages(i,files)); return; }
+  renderEditor(); renderPreview(); save();
+}
+
+function renderPreview(){
+  const n = state.steps.length, total = n+1;
+  const today = new Date(), d = `${today.getFullYear()}.${String(today.getMonth()+1).padStart(2,'0')}.${String(today.getDate()).padStart(2,'0')}`;
+  const foot = p => `<div class="foot"><span>作成：${d}${state.author?'：'+esc(U(state.author)):''}</span><span>${p} / ${total}</span></div>`;
+  let h = `<section class="page cover"><div class="steps">${n} Steps</div>
+    <div class="title">${esc(U(state.title))||'<span style="color:#bbb">タイトル</span>'}</div>
+    ${state.subtitle?`<div class="sub">${esc(U(state.subtitle))}</div>`:''}${foot(1)}</section>`;
+  state.steps.forEach((s,i)=>{
+    h += `<section class="page"><div class="stepno"><span class="n">${i+1}</span><span>${esc(U(s.name))}</span></div>
+      <div class="photo ${s.imgs.length?'n'+s.imgs.length:'empty'}">${s.imgs.length?s.imgs.map(u=>`<div class="cell"><img src="${u}"></div>`).join(''):'写真なし'}</div>
+      <div class="body">${esc(U(s.text))}</div>${foot(i+2)}</section>`;
+  });
+  $('#pages').innerHTML = h;
+  const bytes = state.steps.reduce((a,s)=>a+s.imgs.reduce((b,u)=>b+Math.round(u.length*0.75),0),0);
+  $('#stat').textContent = `ステップ ${n} ／ PDF全体 ${total}ページ ／ 写真の合計 約${(bytes/1048576).toFixed(1)}MB`;
+}
+
+$('#title').oninput = e=>{ state.title=e.target.value; renderPreview(); save(); };
+$('#subtitle').oninput = e=>{ state.subtitle=e.target.value; renderPreview(); save(); };
+$('#author').oninput = e=>{ state.author=e.target.value; renderPreview(); save(); };
+$('#unify').onchange = e=>{ state.unify=e.target.checked; renderPreview(); save(); };
+$('#btnAdd').onclick = ()=>{ state.steps.push(newStep()); renderEditor(); renderPreview(); save(); };
+$('#btnShoot').onclick = ()=>shoot(async files=>{ try{ state.steps.push(newStep({imgs:[await resizeImage(files[0])]})); }catch(e){ alert(e.message); return; } renderEditor(); renderPreview(); save(); setTimeout(()=>{ const t=document.querySelectorAll('.step'); if(t.length) t[t.length-1].scrollIntoView({behavior:'smooth',block:'center'}); },50); });
+$('#btnBulk').onclick = ()=>$('#bulkFile').click();
+$('#bulkFile').onchange = async e=>{
+  const files = [...e.target.files].sort((a,b)=>a.name.localeCompare(b.name,'ja',{numeric:true}));
+  for(const f of files){ try{ state.steps.push(newStep({imgs:[await resizeImage(f)]})); }catch(err){} }
+  e.target.value=''; renderEditor(); renderPreview(); save();
+};
+$('#btnClear').onclick = ()=>{ if(confirm('入力内容をすべて消しますか？')){ state={title:'',subtitle:'',author:state.author,unify:state.unify,steps:[]}; renderEditor(); renderPreview(); save(); } };
+$('#btnSample').onclick = ()=>{
+  if(state.steps.length && !confirm('現在の内容を上書きしてサンプルを入れますか？')) return;
+  state.title='帆立とズワイガニの贅沢海鮮ココット'; state.subtitle='ぷれじでんと12月1月おすすめ';
+  state.steps=[
+    newStep({name:'オーダー用意',text:'蟹肩コロ・・50g\n帆立貝柱・・1個(小さければ2個)\nほうれん草・・10g\nマッシュルーム・・1個 4カット\n\n≪ソース≫\n創味ストレートホワイトソース・・70g＋水10g\nチーズ・・20g'}),
+    newStep({name:'カウンター焼',text:'帆立、マッシュルーム、ほうれん草を焼く\n\n塩、胡椒'}),
+    newStep({name:'完成',text:'※下皿に紙ナフキン　蓋はつけなくてよい'})];
+  renderEditor(); renderPreview(); save();
+};
+$('#btnPrint').onclick = ()=>{
+  if(!state.title.trim()){ alert('タイトルを入力してください。'); return; }
+  if(!state.steps.length){ alert('ステップを1つ以上追加してください。'); return; }
+  document.title = U(state.title);
+  window.print();
+};
+renderEditor(); renderPreview();
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>

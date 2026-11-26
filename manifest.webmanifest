@@ -1,0 +1,15 @@
+{
+  "name": "Teach me Biz 取込用PDFメーカー",
+  "short_name": "PDFメーカー",
+  "description": "Teach me Bizの「PDFからマニュアル作成」に取り込むPDFを作ります",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#C8102E",
+  "lang": "ja",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}
