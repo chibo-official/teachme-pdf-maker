@@ -36,6 +36,9 @@ button.primary:hover{background:#a90d26}
 .step .top input{flex:1}
 .drop{border:2px dashed #ccc;border-radius:6px;padding:8px;text-align:center;font-size:12px;color:var(--gray);cursor:pointer;margin-top:6px;background:#fff}
 .drop.over{border-color:var(--red);background:#fff4f6}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 4px}
+.chip{padding:5px 9px;font-size:12px;border-radius:14px;border:1px solid #ccc;background:#fff;color:#444}
+.chip.on{background:var(--red);border-color:var(--red);color:#fff;font-weight:bold}
 .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .thumb{position:relative;width:74px;height:74px;border:1px solid #ccc;border-radius:4px;background:#fff;overflow:hidden}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -120,9 +123,7 @@ button.primary:hover{background:#a90d26}
 
 <div class="preview"><div class="zoomwrap" id="pages"></div></div>
 </div>
-<datalist id="names">
-  <option value="オーダー用意"><option value="仕込み"><option value="カウンター焼"><option value="鉄板焼"><option value="盛り付け"><option value="仕上げ"><option value="提供"><option value="完成"><option value="注意点">
-</datalist>
+
 
 <script>
 const MAX_EDGE = 1600, QUALITY = 0.85;
@@ -153,6 +154,7 @@ function resizeImage(file){
 }
 
 const MAX_IMGS = 4;
+const NAMES=['オーダー用意','仕込み','カウンター焼','鉄板焼','盛り付け','仕上げ','提供','完成','注意点'];
 function newStep(o={}){ return Object.assign({name:'',text:'',imgs:[]},o); }
 state.steps.forEach(s=>{ if(!s.imgs){ s.imgs = s.img?[s.img]:[]; delete s.img; } });
 
@@ -164,14 +166,16 @@ function renderEditor(){
     const d = document.createElement('div'); d.className='step';
     d.innerHTML = `
       <div class="top"><span class="num">${i+1}</span>
-        <input type="text" list="names" placeholder="工程名（例：カウンター焼）" value="${esc(s.name)}" data-k="name">
+        <input type="text" placeholder="工程名（例：カウンター焼）" value="${esc(s.name)}" data-k="name">
         <button data-a="up" title="上へ">↑</button><button data-a="down" title="下へ">↓</button>
         <button data-a="dup" title="複製">複製</button><button data-a="del" title="削除">削除</button></div>
+      <div class="chips">${NAMES.map(n=>`<button type="button" class="chip${s.name===n?' on':''}" data-nm="${n}">${n}</button>`).join('')}</div>
       <div class="thumbs">${s.imgs.map((u,j)=>`<div class="thumb"><img src="${u}"><button class="x" data-ia="rm" data-j="${j}" title="外す">×</button>${j>0?`<button class="mv" data-ia="left" data-j="${j}" title="前へ">◀</button>`:''}</div>`).join('')}</div>
       <div class="drop" data-a="pick">${s.imgs.length>=MAX_IMGS?`写真は最大${MAX_IMGS}枚です`:`📷 写真をドロップ／クリックで追加（複数選択可・残り${MAX_IMGS-s.imgs.length}枚）`}</div>
       <div class="row" style="margin-top:6px"><button data-a="cam" ${s.imgs.length>=MAX_IMGS?'disabled':''}>📷 カメラで撮影して追加</button></div>
       <textarea placeholder="説明文・分量など（改行はそのまま反映されます）" data-k="text">${esc(s.text)}</textarea>`;
     d.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('input',()=>{ s[el.dataset.k]=el.value; renderPreview(); save(); }));
+    d.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{ s.name = (s.name===c.dataset.nm)?'':c.dataset.nm; renderEditor(); renderPreview(); save(); }));
     d.querySelectorAll('button[data-a]').forEach(b=>b.addEventListener('click',()=>act(i,b.dataset.a)));
     const drop = d.querySelector('.drop');
     drop.addEventListener('click',()=>pickImage(i));
